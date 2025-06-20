@@ -1,0 +1,41 @@
+version: '3.9'
+
+services:
+  app:
+    build: .
+    container_name: escape-bot
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+    restart: always
+  
+  cron:
+    build:
+      context: .
+    container_name: escape-reminder
+    command: node dist/cron/reminder.js
+    env_file:
+      - .env
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+    restart: always
+
+  db:
+    image: postgres:15
+    container_name: escape-db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    restart: always
+
+volumes:
+  db-data:
