@@ -24,7 +24,8 @@ const client = new Client(clientConfig);
 
 // 處理 webhook event 的函式
 const handleEvent = async (event: WebhookEvent) => {
-  if (event.type === 'join' || event.type === 'follow') {
+  console.log(event.type);
+  if (event.type === 'join') {
     const welcomeMessage = `🎉 歡迎加入《密室逃脫小精靈》！
 
 我是你們的活動秘書，能幫你們管理密室逃脫的行程，也會在活動前提醒大家準時集合🧩
