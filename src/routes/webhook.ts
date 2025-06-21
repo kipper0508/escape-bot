@@ -24,7 +24,7 @@ const client = new Client(clientConfig);
 
 // 處理 webhook event 的函式
 const handleEvent = async (event: WebhookEvent) => {
-  console.log(event.type);
+  
   if (event.type === 'join') {
     const welcomeMessage = `🎉 歡迎加入《密室逃脫小精靈》！
 
@@ -57,6 +57,10 @@ const handleEvent = async (event: WebhookEvent) => {
   if (event.type !== 'message' || event.message.type !== 'text') return;
 
   const messageText = event.message.text.trim();
+
+  if (!messageText.startsWith('小精靈')) {
+    return;
+  }
 
   const command = parseCommand(messageText);
 
