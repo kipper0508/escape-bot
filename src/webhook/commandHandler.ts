@@ -3,21 +3,30 @@ import { ParsedCommand } from './commandParser';
 import { format } from 'date-fns';
 import dotenv from 'dotenv';
 import { searchEscapeBar, generateDescription } from '../services/searchEscapeBar.js';
+import { commandGuide } from '../strings/zh-tw.js'
 
 dotenv.config();
 
 const prisma = new PrismaClient();
 
-async function handleGenDscription(
+export async function handleGenDescription(
   title: string,
-  time: Date,
   location: string,
 ): Promise<string> {
-  const gameUrl = await searchEscapeBar(title,location);
-  if (!gameUrl) return '❌ 找不到密室主題';
+  const gameUrls = await searchEscapeBar(title, location);
 
+  if (!gameUrls || gameUrls.length === 0) {
+    return '❌ 找不到密室主題';
+  }
+
+  if (gameUrls.length > 1) {
+    return `⚠️ 有多個同名密室在「${location}」`;
+  }
+
+  const gameUrl = gameUrls[0];
   const desc = await generateDescription(gameUrl);
-  if (!gameUrl) return '⚠️  系統無法辨識的頁面: gameUrl';
+
+  if (!desc) return `⚠️ 系統無法辨識的頁面: ${gameUrl}`;
 
   return desc;
 }
@@ -60,7 +69,7 @@ export async function handleCommand(
         create: { id: contextId, type: contextType as UserType },
       });
       
-      const description = await handleGenDscription(command.title, command.time, command.location);
+      const description = await handleGenDescription(command.title, command.location);
 
       // 新增活動
       const event = await prisma.event.create({
@@ -162,6 +171,20 @@ export async function handleCommand(
       }
 
       return '❓ 未知指令類型';
+    }
+
+    case 'search': {
+      if (!command.title || !command.location) {
+        return '❌ 找主題需要名稱與地點';
+      }
+
+      const description = await handleGenDescription(command.title, command.location);
+
+      return `🧭 主題資訊\n名稱：${command.title}\n${description ?? '（無說明）'}`;
+    }
+
+    case 'help': {
+      return commandGuide; 
     }
 
     default:

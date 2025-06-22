@@ -4,6 +4,7 @@ import { middleware, Client, ClientConfig, MiddlewareConfig, WebhookEvent } from
 import dotenv from 'dotenv';
 import { parseCommand } from '../webhook/commandParser.js';
 import { handleCommand } from '../webhook/commandHandler.js';
+import { welcomeMessage } from '../strings/zh-tw.js'
 
 
 dotenv.config();
@@ -26,28 +27,6 @@ const client = new Client(clientConfig);
 const handleEvent = async (event: WebhookEvent) => {
   
   if (event.type === 'join') {
-    const welcomeMessage = `🎉 歡迎加入《密室逃脫小精靈》！
-
-我是你們的活動秘書，能幫你們管理密室逃脫的行程，也會在活動前提醒大家準時集合🧩
-
-📌 指令使用方式如下：
-
-🆕 新增活動：
-小精靈 新增 6/20 16:00 奪命鎖鏈1 台北
-
-📅 查詢所有未來活動：
-小精靈 查詢所有
-
-🔍 查詢特定活動（可省略時間地點）：
-小精靈 查詢 奪命鎖鏈1（6/20 16:00 台北）
-
-❌ 刪除特定活動（若有多筆將提示）：
-小精靈 刪除 奪命鎖鏈1（6/20 16:00 台北）
-
-📢 群組活動將提醒所有成員，活動前會自動發送通知！
-
-有任何問題請不要私訊小精靈，小精靈已經提前逃脫了🏃`
-
     await client.replyMessage(event.replyToken, {
       type: 'text',
       text: welcomeMessage,

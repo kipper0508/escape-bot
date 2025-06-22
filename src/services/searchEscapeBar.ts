@@ -78,7 +78,7 @@ export async function extractAllGamesListData(title: string) {
   return allGames;
 }
 
-export async function searchEscapeBar(title: string, location: string): Promise<string | null> {
+export async function searchEscapeBar(title: string, location: string): Promise<string[] | null> {
   const allGames = await extractAllGamesListData(title);
 
   const cityId = cityNameToId[location];
@@ -95,10 +95,8 @@ export async function searchEscapeBar(title: string, location: string): Promise<
     return null; // 找不到
   }
 
-  const gameId = matchedGames[0].gameId;
-
-  const url = `https://escape.bar/game/${gameId}`;
-  return url;
+  const urls = matchedGames.map((g) => `https://escape.bar/game/${g.gameId}`);
+  return urls;
 }
 
 export async function generateDescription(url: string) {

@@ -1,4 +1,4 @@
-export type CommandType = 'add' | 'queryAll' | 'queryOne' | 'deleteOne' | 'none';
+export type CommandType = 'add' | 'queryAll' | 'queryOne' | 'deleteOne' | 'search' | 'help' | 'none';
 
 export interface ParsedCommand {
   type: CommandType;
@@ -67,6 +67,24 @@ export function parseCommand(input: string): ParsedCommand {
       title,
       time,
       location,
+    };
+  }
+  
+  // === 4. 找主題(不新增) ===
+  const searchMatch = text.match(/^小精靈\s+找主題\s+(.+?)\s+(\S+)$/);
+  if (searchMatch) {
+    const [, title, location] = searchMatch;
+    return {
+      type: 'search',
+      title: title.trim(),
+      location: location.trim(),
+    };
+  }
+  
+  // === 5. 幫助 ===
+  if (/^小精靈\s+幫助$/.test(text)) {
+    return {
+      type: 'help',
     };
   }
 
