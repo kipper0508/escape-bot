@@ -8,7 +8,7 @@ dotenv.config();
 
 const prisma = new PrismaClient();
 
-async function handleEscapeCommand(
+async function handleGenDscription(
   title: string,
   time: Date,
   location: string,
@@ -60,7 +60,7 @@ export async function handleCommand(
         create: { id: contextId, type: contextType as UserType },
       });
       
-      const description = await handleEscapeCommand(command.title, command.time, command.location);
+      const description = await handleGenDscription(command.title, command.time, command.location);
 
       // 新增活動
       const event = await prisma.event.create({

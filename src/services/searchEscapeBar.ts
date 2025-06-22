@@ -122,6 +122,11 @@ export async function generateDescription(url: string) {
     .replace(/\n/g, " ") 
     .trim() || "未知";
 
+  const studio = $("h5.chakra-heading.css-o8iskg")
+    .first()
+    .text()
+    .trim() || "未知";
 
-  return `人數：${people}\n遊戲時長：${duration}\n價格: ${price}\n主題介紹: ${url}\n地址：${address}\n${googleMapLink}`;
+
+  return `人數：${people}\n遊戲時長：${duration}\n價格: ${price}\n工作室: ${studio}\n主題介紹: ${url}\n地址：${address}\n${googleMapLink}`;
 }
