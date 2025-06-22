@@ -12,10 +12,10 @@ app.use('/webhook', express.raw({ type: 'application/json' }));
 app.use('/webhook', webhookRouter);
 
 app.get('/', (_req, res) => {
-  res.send('密室逃脫小精靈啟動中！');
+    res.send('密室逃脫小精靈啟動中！');
 });
 
 app.listen(port, () => {
-  console.log(`🚀 伺服器啟動於 http://localhost:${port}`);
+    console.log(`🚀 伺服器啟動於 http://localhost:${port}`);
 });
 

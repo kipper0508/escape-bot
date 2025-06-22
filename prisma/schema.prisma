@@ -8,11 +8,11 @@ datasource db {
 }
 
 model User {
-  id          String         @id
-  type        UserType
-  createdAt   DateTime       @default(now())
-  createdEvents Event[]      @relation("CreatedEvents")
-  events       UserOnEvent[]
+  id            String        @id
+  type          UserType
+  createdAt     DateTime      @default(now())
+  createdEvents Event[]       @relation("CreatedEvents")
+  events        UserOnEvent[]
 }
 
 model Event {
@@ -22,10 +22,10 @@ model Event {
   location     String
   eventTime    DateTime
   remindBefore Int
-  reminded     Boolean  @default(false)  // 標記是否已提醒
+  reminded     Boolean       @default(false) // 標記是否已提醒
   createdAt    DateTime      @default(now())
   createdById  String
-  createByType UserType      // ← 新增：直接存 user/group
+  createByType UserType // 直接存 user/group
   createdBy    User          @relation("CreatedEvents", fields: [createdById], references: [id])
   participants UserOnEvent[]
 }
@@ -35,8 +35,8 @@ model UserOnEvent {
   eventId  Int
   joinedAt DateTime @default(now())
 
-  user   User @relation(fields: [userId], references: [id])
-  event  Event @relation(fields: [eventId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
 
   @@id([userId, eventId])
 }
