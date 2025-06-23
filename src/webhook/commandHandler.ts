@@ -168,7 +168,7 @@ export async function handleCommand(
             }
 
             const game =  gamesInLocation[0];
-            const scaredWaring = isScaredTopic(game.gameId) ? '👻👻 恐怖警告 👻👻\n' : '';
+            const scaredWaring = await isScaredTopic(game.gameId) ? '👻👻 恐怖警告 👻👻\n' : '';
             const description = await generateDescription(game.gameId);
             return `🧭 主題資訊\n${scaredWaring}名稱：${gamesInLocation[0].title}\n${description ?? '（無說明）'}`;
         }
