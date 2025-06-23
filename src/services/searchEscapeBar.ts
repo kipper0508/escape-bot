@@ -97,6 +97,22 @@ export async function extractGamesInLoacation(games: SimpleGameInfo[], location:
     return matchedGames;
 }
 
+export async function isScaredTopic(gameId: string) {
+    const url = `https://escape.bar/game/${gameId}`;
+    const res = await fetch(url);
+    if (!res.ok) return false;
+
+    const html = await res.text();
+    const $ = load(html);
+
+    const tags_bar = $('div.chakra-stack.css-1rafi8n').first();
+    const tags: string[] = [];
+    tags_bar.find('b.chakra-text.css-0').each((_, el) => {
+        tags.push($(el).text().trim());
+    });
+    return tags.includes('恐怖驚悚');
+}
+
 export async function generateDescription(gameId: string) {
     const url = `https://escape.bar/game/${gameId}`;
     const res = await fetch(url);
@@ -123,7 +139,6 @@ export async function generateDescription(gameId: string) {
         .first()
         .text()
         .trim() || "未知";
-
 
     return `人數：${people}\n遊戲時長：${duration}\n價格: ${price}\n工作室: ${studio}\n主題介紹: ${url}\n地址：${address}\n${googleMapLink}`;
 }

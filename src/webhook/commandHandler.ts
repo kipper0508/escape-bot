@@ -2,7 +2,7 @@ import { PrismaClient, UserType } from '@prisma/client';
 import { ParsedCommand } from './commandParser';
 import { format } from 'date-fns';
 import dotenv from 'dotenv';
-import { extractAllGamesList, extractGamesInLoacation, generateDescription } from '../services/searchEscapeBar.js';
+import { extractAllGamesList, extractGamesInLoacation, isScaredTopic, generateDescription } from '../services/searchEscapeBar.js';
 import { commandGuide } from '../strings/zh-tw.js'
 
 dotenv.config();
@@ -51,7 +51,6 @@ export async function handleCommand(
             });
 
             const description = await generateDescription(game.gameId);
-
             // 新增活動
             const event = await prisma.event.create({
                 data: {
@@ -169,8 +168,10 @@ export async function handleCommand(
                 return `⚠️ 有多個同名密室在「${command.location}」，請確認要查詢的主題:。\n${titles}`;
             }
 
-            const description = await generateDescription(gamesInLocation[0].gameId);
-            return `🧭 主題資訊\n名稱：${gamesInLocation[0].title}\n${description ?? '（無說明）'}`;
+            const game =  gamesInLocation[0];
+            const scaredWaring = isScaredTopic(game.gameId) ? '👻👻 恐怖警告 👻👻\n' : '';
+            const description = await generateDescription(game.gameId);
+            return `🧭 主題資訊\n${scaredWaring}名稱：${gamesInLocation[0].title}\n${description ?? '（無說明）'}`;
         }
 
         case 'help': {
