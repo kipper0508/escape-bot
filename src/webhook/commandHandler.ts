@@ -2,34 +2,12 @@ import { PrismaClient, UserType } from '@prisma/client';
 import { ParsedCommand } from './commandParser';
 import { format } from 'date-fns';
 import dotenv from 'dotenv';
-import { searchEscapeBar, generateDescription } from '../services/searchEscapeBar.js';
+import { extractAllGamesList, extractGamesInLoacation, generateDescription } from '../services/searchEscapeBar.js';
 import { commandGuide } from '../strings/zh-tw.js'
 
 dotenv.config();
 
 const prisma = new PrismaClient();
-
-export async function handleGenDescription(
-    title: string,
-    location: string,
-): Promise<string> {
-    const gameUrls = await searchEscapeBar(title, location);
-
-    if (!gameUrls || gameUrls.length === 0) {
-        return '❌ 找不到密室主題';
-    }
-
-    if (gameUrls.length > 1) {
-        return `⚠️ 有多個同名密室在「${location}」`;
-    }
-
-    const gameUrl = gameUrls[0];
-    const desc = await generateDescription(gameUrl);
-
-    if (!desc) return `⚠️ 系統無法辨識的頁面: ${gameUrl}`;
-
-    return desc;
-}
 
 export async function handleCommand(
     command: ParsedCommand,
@@ -41,11 +19,21 @@ export async function handleCommand(
             if (!command.title || !command.time || !command.location) {
                 return '❌ 新增活動需要名稱、時間與地點';
             }
+            
+            // Escape Bar 的遊戲列表
+            const games = await extractAllGamesList(command.title);
+            const gamesInLocation = await extractGamesInLoacation(games, command.location);
+            if (!gamesInLocation || gamesInLocation.length === 0) {
+                return '❌ 找不到密室主題';
+            } else if (gamesInLocation.length > 1) {
+                return `⚠️ 有多個同名密室在「${command.location}」，請確認後再新增。`;
+            }
 
+            const game = gamesInLocation[0];
             // 檢查是否已有同名、同時間、同建立者的活動
             const conflict = await prisma.event.findFirst({
                 where: {
-                    title: command.title,
+                    title: game.title,
                     eventTime: command.time,
                     createdById: contextId,
                     createByType: contextType as UserType,
@@ -62,19 +50,12 @@ export async function handleCommand(
                 create: { id: contextId, type: contextType as UserType },
             });
 
-            // 建立使用者(若不存在)
-            await prisma.user.upsert({
-                where: { id: contextId },
-                update: {},
-                create: { id: contextId, type: contextType as UserType },
-            });
-
-            const description = await handleGenDescription(command.title, command.location);
+            const description = await generateDescription(game.gameId);
 
             // 新增活動
             const event = await prisma.event.create({
                 data: {
-                    title: command.title,
+                    title: game.title,
                     location: command.location,
                     description: description,
                     eventTime: command.time,
@@ -91,7 +72,7 @@ export async function handleCommand(
                     eventId: event.id,
                 },
             });
-            return `✅ 已新增活動：「${command.title}」\n時間：${format(command.time, 'yyyy/M/d HH:mm')}\n${description ?? '（無說明）'}`;
+            return `✅ 已新增活動：「${game.title}」\n時間：${format(command.time, 'yyyy/M/d HH:mm')}\n${description ?? '（無說明）'}`;
         }
 
         case 'queryAll': {
@@ -178,9 +159,18 @@ export async function handleCommand(
                 return '❌ 找主題需要名稱與地點';
             }
 
-            const description = await handleGenDescription(command.title, command.location);
+            const games = await extractAllGamesList(command.title);
+            const gamesInLocation = await extractGamesInLoacation(games, command.location);
+            if (!gamesInLocation || gamesInLocation.length === 0) {
+                return '❌ 找不到密室主題';
+            } else if (gamesInLocation.length > 1) {
+                const sortedGames = gamesInLocation.sort((a, b) => a.title.localeCompare(b.title));
+                const titles = sortedGames.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
+                return `⚠️ 有多個同名密室在「${command.location}」，請確認要查詢的主題:。\n${titles}`;
+            }
 
-            return `🧭 主題資訊\n名稱：${command.title}\n${description ?? '（無說明）'}`;
+            const description = await generateDescription(gamesInLocation[0].gameId);
+            return `🧭 主題資訊\n名稱：${gamesInLocation[0].title}\n${description ?? '（無說明）'}`;
         }
 
         case 'help': {

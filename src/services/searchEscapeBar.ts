@@ -33,14 +33,14 @@ type SimpleGameInfo = {
     gameId: string;
 };
 
-export async function extractAllGamesListData(title: string) {
+export async function extractAllGamesList(title: string) : Promise<SimpleGameInfo[] | null>{
     const url = `https://escape.bar/games?outdoor=true&over=true&q=${encodeURIComponent(title)}`;
     const res = await fetch(url);
     const html = await res.text();
     const $ = load(html);
 
     const scripts = $('script');
-    const allGames: any[] = [];
+    const allGames: SimpleGameInfo[] = [];
 
     scripts.each((_, script) => {
         const scriptContent = $(script).html();
@@ -78,8 +78,7 @@ export async function extractAllGamesListData(title: string) {
     return allGames;
 }
 
-export async function searchEscapeBar(title: string, location: string): Promise<string[] | null> {
-    const allGames = await extractAllGamesListData(title);
+export async function extractGamesInLoacation(games: SimpleGameInfo[], location: string): Promise<SimpleGameInfo[] | null> {
 
     const cityId = cityNameToId[location];
     if (!cityId) {
@@ -87,21 +86,21 @@ export async function searchEscapeBar(title: string, location: string): Promise<
     }
 
     // 篩選符合 title + cityId
-    const matchedGames = allGames.filter(g =>
-        g.title.includes(title) && g.cityId === cityId
+    const matchedGames = games.filter(g =>
+        g.cityId === cityId
     );
 
     if (matchedGames.length === 0) {
         return null; // 找不到
     }
 
-    const urls = matchedGames.map((g) => `https://escape.bar/game/${g.gameId}`);
-    return urls;
+    return matchedGames;
 }
 
-export async function generateDescription(url: string) {
+export async function generateDescription(gameId: string) {
+    const url = `https://escape.bar/game/${gameId}`;
     const res = await fetch(url);
-    if (!res.ok) return null;
+    if (!res.ok) return `⚠️ 系統無法辨識的頁面: ${url}`;
 
     const html = await res.text();
     const $ = load(html);
