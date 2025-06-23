@@ -11,11 +11,19 @@ const currentYear = new Date().getFullYear();
 
 // 將 6/20 16:00 轉為 Date（預設今年）
 function parseDateTime(raw: string): Date | undefined {
-    const match = raw.match(/^(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/);
-    if (!match) return undefined;
+    // 支援兩種格式：yyyy/MM/dd HH:mm 或 MM/dd HH:mm
+    const fullMatch = raw.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/);
+    const shortMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\s+(\d{1,2}):(\d{2})$/);
 
-    const [, month, day, hour, minute] = match.map(Number);
-    return new Date(currentYear, month - 1, day, hour, minute);
+    if (fullMatch) {
+        const [, year, month, day, hour, minute] = fullMatch.map(Number);
+        return new Date(year, month - 1, day, hour, minute);
+    } else if (shortMatch) {
+        const [, month, day, hour, minute] = shortMatch.map(Number);
+        const currentYear = new Date().getFullYear();
+        return new Date(currentYear, month - 1, day, hour, minute);
+    }
+    return undefined;
 }
 
 export function parseCommand(input: string): ParsedCommand {
@@ -23,10 +31,15 @@ export function parseCommand(input: string): ParsedCommand {
     const text = input.replace(/（/g, '(').replace(/）/g, ')').trim();
 
     // === 1. 新增指令 ===
-    const addMatch = text.match(/^小精靈\s+新增\s+(\d{1,2}\/\d{1,2})\s+(\d{1,2}:\d{2})\s+(.+?)\s+(.+)$/);
+    const addMatch = text.match(/^小精靈\s+新增\s+(\d{1,4}\/\d{1,2}(?:\/\d{1,2})?)\s+(\d{1,2}:\d{2})\s+(.+?)\s+(.+)$/); 
     if (addMatch) {
         const [, date, time, title, location] = addMatch;
         const dateTime = parseDateTime(`${date} ${time}`);
+	if (!dateTime) {
+            return {
+                type: 'none',
+	    };
+	}
         return {
             type: 'add',
             title,
