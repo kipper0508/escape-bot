@@ -30,17 +30,16 @@ export async function handleCommand(
             }
 
             const game = gamesInLocation[0];
-            // 檢查是否已有同名、同時間、同建立者的活動
+            // 檢查是否已有同時間、同建立者的活動
             const conflict = await prisma.event.findFirst({
                 where: {
-                    title: game.title,
                     eventTime: command.time,
                     createdById: contextId,
                     createByType: contextType as UserType,
                 },
             });
             if (conflict) {
-                return `⚠️ 活動 "${command.title}" 在該時間已存在，請確認後再新增。`;
+                return `⚠️ 該時間已存在活動，請重新選擇時間。`;
             }
 
             // 建立使用者(若不存在)
