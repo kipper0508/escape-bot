@@ -15,21 +15,26 @@ const clientConfig: ClientConfig = {
 
 const client = new Client(clientConfig);
 
+console.log(`Reminder starting...`);
+
 cron.schedule('0 * * * *', async () => {
 	const now = new Date();
+        const nowGMT8 = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+
+	console.log(`於 ${nowGMT8} 進行提醒檢查`);
 
 	const events = await prisma.event.findMany({
 		where: {
 			reminded: false,
 			createByType: UserType.group,
 			eventTime: {
-				gt: now,
+				gt: nowGMT8,
 			},
 		},
 	});
 
 	for (const event of events) {
-		const diffMinutes = (event.eventTime.getTime() - now.getTime()) / 1000 / 60;
+		const diffMinutes = (event.eventTime.getTime() - nowGMT8.getTime()) / 1000 / 60;
 
 		if (diffMinutes <= event.remindBefore) {
 			try {
