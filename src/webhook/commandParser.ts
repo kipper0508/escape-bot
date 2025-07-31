@@ -1,4 +1,4 @@
-export type CommandType = 'add' | 'queryAll' | 'queryOne' | 'deleteOne' | 'search' | 'help' | 'none';
+export type CommandType = 'add' | 'queryAll' | 'queryOne' | 'deleteOne' | 'search' | 'comment' | 'help' | 'donate' | 'none';
 
 export interface ParsedCommand {
     type: CommandType;
@@ -94,10 +94,28 @@ export function parseCommand(input: string): ParsedCommand {
         };
     }
 
-    // === 5. 幫助 ===
+    // === 5. 看評價 ===
+    const commentMatch = text.match(/^小精靈\s+看評論\s+(.+?)\s+(\S+)$/);
+    if (commentMatch) {
+        const [, title, location] = commentMatch;
+        return {
+            type: 'comment',
+            title: title.trim(),
+            location: location.trim(),
+        };
+    }
+
+    // === 6. 幫助 ===
     if (/^小精靈\s+幫助$/.test(text)) {
         return {
             type: 'help',
+        };
+    }
+
+    // === 7. 求贊助 ===
+    if (/^小精靈\s+給我錢$/.test(text)) {
+        return {
+            type: 'donate',
         };
     }
 

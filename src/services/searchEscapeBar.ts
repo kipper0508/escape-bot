@@ -33,6 +33,18 @@ type SimpleGameInfo = {
     gameId: string;
 };
 
+type Review = {
+    rating: number;
+    comment: string;
+    feedbackPoints: number;
+    isSpoiler?: boolean;
+};
+
+type ReviewApiResponse = {
+  reviewDataList?: Review[];
+  lastUserCustomId?: string;
+};
+
 export async function extractAllGamesList(title: string) : Promise<SimpleGameInfo[] | null>{
     const url = `https://escape.bar/games?outdoor=true&over=true&q=${encodeURIComponent(title)}`;
     const res = await fetch(url);
@@ -97,10 +109,10 @@ export async function extractGamesInLoacation(games: SimpleGameInfo[], location:
     return matchedGames;
 }
 
-export async function isScaredTopic(gameId: string) {
+export async function getTopicTags(gameId: string) {
     const url = `https://escape.bar/game/${gameId}`;
     const res = await fetch(url);
-    if (!res.ok) return false;
+    if (!res.ok) return [];
 
     const html = await res.text();
     const $ = load(html);
@@ -110,6 +122,11 @@ export async function isScaredTopic(gameId: string) {
     tags_bar.find('b.chakra-text.css-0').each((_, el) => {
         tags.push($(el).text().trim());
     });
+    return tags;
+}
+
+export async function isScaredTopic(gameId: string) {
+    const tags = await getTopicTags(gameId);
     return tags.includes('恐怖驚悚');
 }
 
@@ -141,4 +158,32 @@ export async function generateDescription(gameId: string) {
         .trim() || "未知";
 
     return `人數：${people}\n遊戲時長：${duration}\n價格: ${price}\n工作室: ${studio}\n主題介紹: ${url}\n地址：${address}\n${googleMapLink}`;
+}
+
+export async function getCustomerComment(gameId: string) {
+    const base_url = `https://bartender.escape.bar/review/get-by-game?=&gameId=${gameId}&sort=feedbackPoints`;
+    const requestTimes = 3; // 你想要的 request 次數
+    let allResults: Review[] = [];
+    let lastUserCustomId = null;
+
+    for (let i = 0; i < requestTimes; i++) {
+        let url = base_url;
+        if (lastUserCustomId) {
+            url += `&lastUserCustomId=${lastUserCustomId}`;
+        }
+        const res = await fetch(url);
+        const data: ReviewApiResponse = await res.json();
+        const result = (data.reviewDataList || [])
+            .filter(obj => !obj.isSpoiler)
+            .map(obj => ({
+                rating: obj.rating,
+                comment: obj.comment,
+                feedbackPoints: obj.feedbackPoints
+            }));
+        allResults = allResults.concat(result);
+        lastUserCustomId = data.lastUserCustomId;
+        if (!lastUserCustomId) break;
+    }
+
+    return JSON.stringify(allResults, null, 2);
 }

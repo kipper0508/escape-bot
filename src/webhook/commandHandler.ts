@@ -1,9 +1,10 @@
 import { PrismaClient, UserType } from '@prisma/client';
-import { ParsedCommand } from './commandParser';
+import { ParsedCommand } from './commandParser.js';
 import { format } from 'date-fns';
 import dotenv from 'dotenv';
-import { extractAllGamesList, extractGamesInLoacation, isScaredTopic, generateDescription } from '../services/searchEscapeBar.js';
+import { extractAllGamesList, extractGamesInLoacation, isScaredTopic, generateDescription, getTopicTags } from '../services/searchEscapeBar.js';
 import { commandGuide } from '../strings/zh-tw.js'
+import { generateCustomerComment } from '../services/openai.js';
 
 dotenv.config();
 
@@ -19,17 +20,7 @@ export async function handleCommand(
             if (!command.title || !command.time || !command.location) {
                 return '❌ 新增活動需要名稱、時間與地點';
             }
-            
-            // Escape Bar 的遊戲列表
-            const games = await extractAllGamesList(command.title);
-            const gamesInLocation = await extractGamesInLoacation(games, command.location);
-            if (!gamesInLocation || gamesInLocation.length === 0) {
-                return '❌ 找不到密室主題';
-            } else if (gamesInLocation.length > 1) {
-                return `⚠️ 有多個同名密室在「${command.location}」，請確認後再新增。`;
-            }
 
-            const game = gamesInLocation[0];
             // 檢查是否已有同時間、同建立者的活動
             const conflict = await prisma.event.findFirst({
                 where: {
@@ -48,7 +39,19 @@ export async function handleCommand(
                 update: {},
                 create: { id: contextId, type: contextType as UserType },
             });
+            
+            // Escape Bar 的遊戲列表
+            const games = await extractAllGamesList(command.title);
+            const gamesInLocation = await extractGamesInLoacation(games, command.location);
+            if (!gamesInLocation || gamesInLocation.length === 0) {
+                return '❌ 找不到密室主題';
+            } else if (gamesInLocation.length > 1) {
+                const sortedGames = gamesInLocation.sort((a, b) => a.title.localeCompare(b.title));
+                const titles = sortedGames.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
+                return `⚠️ 有多個同名密室在「${command.location}」，請確認要新增的主題並重新新增:。\n${titles}`;
+            }
 
+            const game = gamesInLocation[0];
             const description = await generateDescription(game.gameId);
             // 新增活動
             const event = await prisma.event.create({
@@ -164,7 +167,7 @@ export async function handleCommand(
             } else if (gamesInLocation.length > 1) {
                 const sortedGames = gamesInLocation.sort((a, b) => a.title.localeCompare(b.title));
                 const titles = sortedGames.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
-                return `⚠️ 有多個同名密室在「${command.location}」，請確認要查詢的主題:。\n${titles}`;
+                return `⚠️ 有多個同名密室在「${command.location}」，請確認要查詢的主題並重新查詢:。\n${titles}`;
             }
 
             const game =  gamesInLocation[0];
@@ -173,9 +176,32 @@ export async function handleCommand(
             return `🧭 主題資訊\n${scaredWaring}名稱：${gamesInLocation[0].title}\n${description ?? '（無說明）'}`;
         }
 
+        case 'comment': {
+            // Escape Bar 的遊戲列表
+            const games = await extractAllGamesList(command.title);
+            const gamesInLocation = await extractGamesInLoacation(games, command.location);
+            if (!gamesInLocation || gamesInLocation.length === 0) {
+                return '❌ 找不到密室主題';
+            } else if (gamesInLocation.length > 1) {
+                const sortedGames = gamesInLocation.sort((a, b) => a.title.localeCompare(b.title));
+                const titles = sortedGames.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
+                return `⚠️ 有多個同名密室在「${command.location}」，請確認要查詢的主題並重新查詢:。\n${titles}`;
+            }
+
+            const game = gamesInLocation[0];
+            const tags = await getTopicTags(game.gameId);
+            const comment = await generateCustomerComment(game.gameId);
+
+            return `💬 玩家評論\n\n主題標籤：${tags.join(", ")}\n\nAI總結：\n\n${comment}`;
+        }
+
         case 'help': {
             return commandGuide;
         }
+
+        /*case 'donate': {
+            return `謝謝你的支持！如果你想贊助小精靈的開發，可以透過以下方式捐款：\n\n銀行帳號：(${process.env.BANK_CODE})-${process.env.BANK_ACCOUNT}\n\n每一分支持都將用於提升小精靈的功能與服務！`;
+        }*/
 
         default:
             return '❌ 指令格式錯誤或不支援';
