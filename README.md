@@ -78,11 +78,19 @@ DATABASE_URL=postgresql://escape:escape_user_password@db:5432/escape-bot
 docker -v
 docker compose version
 ```
-4. 啟動所有服務
+
+4. Build
+```
+npm run build
+docker-compose build
+```
+
+5. 啟動所有服務
 ```
 docker compose up --build -d
 ```
-5. 第一次啟用(請初始化DB)
+
+6. 第一次啟用(請初始化DB)
 ```
 bash scripts/init-db.sh
 ```
