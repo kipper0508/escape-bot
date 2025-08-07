@@ -40,6 +40,8 @@ const handleEvent = async (event: WebhookEvent) => {
         return;
     }
 
+    console.log('✅ 收到事件', JSON.stringify(event));
+
     const command = parseCommand(messageText);
 
     const source = event.source;
@@ -72,7 +74,7 @@ const handleEvent = async (event: WebhookEvent) => {
 router.post('/', middleware(middlewareConfig), async (req, res) => {
     const events: WebhookEvent[] = req.body.events;
 
-    console.log('✅ 收到 LINE webhook 事件', JSON.stringify(events));
+    //console.log('✅ 收到 LINE webhook 事件');
 
     await Promise.all(events.map(handleEvent))
         .then(() => res.status(200).end())
