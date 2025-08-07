@@ -1,4 +1,4 @@
-export type CommandType = 'add' | 'queryAll' | 'queryOne' | 'deleteOne' | 'search' | 'comment' | 'help' | 'donate' | 'none';
+export type CommandType = 'add' | 'queryAll' | 'queryOne' | 'deleteOne' | 'search' | 'comment' | 'help' | 'donate' | 'queryHistory' | 'none';
 
 export interface ParsedCommand {
     type: CommandType;
@@ -127,6 +127,11 @@ export function parseCommand(input: string): ParsedCommand {
         return {
             type: 'donate',
         };
+    }
+
+    // === 8. 查詢所有 ===
+    if (/^小精靈\s+查詢歷史$/.test(text)) {
+        return { type: 'queryHistory' };
     }
 
     // === fallback: 不支援的格式 ===

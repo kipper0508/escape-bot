@@ -98,7 +98,7 @@ export async function handleCommand(
                 )
                 .join('\n');
 
-            return `📅 未來活動列表：\n${list}`;
+            return `📅 未來活動列表：\n\n${list}`;
         }
 
         case 'queryOne':
@@ -214,6 +214,32 @@ export async function handleCommand(
         /*case 'donate': {
             return `謝謝你的支持！如果你想贊助小精靈的開發，可以透過以下方式捐款：\n\n銀行帳號：(${process.env.BANK_CODE})-${process.env.BANK_ACCOUNT}\n\n每一分支持都將用於提升小精靈的功能與服務！`;
         }*/
+
+
+        case 'queryHistory': {
+            const now = new Date();
+            const events = await prisma.event.findMany({
+                where: {
+                    eventTime: { lt: now },
+                    createdById: contextId,
+                    createByType: contextType as UserType,
+                },
+                orderBy: { eventTime: 'asc' },
+            });
+
+            if (events.length === 0) {
+                return '👀 尚無參加過的活動';
+            }
+
+            const list = events
+                .map(
+                    (e) =>
+                        `📜 ${e.title}（${format(e.eventTime, 'M/d HH:mm')} ${e.location}）`
+                )
+                .join('\n');
+
+            return `🏛️ 歷史活動列表：\n\n${list}`;
+        }
 
         default:
             return '❌ 指令格式錯誤或不支援';
