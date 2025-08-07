@@ -4,6 +4,7 @@ export interface ParsedCommand {
     type: CommandType;
     title?: string;
     time?: Date;
+    specificTime?: boolean;
     location?: string;
 }
 
@@ -62,16 +63,24 @@ export function parseCommand(input: string): ParsedCommand {
         let location: string | undefined;
 
         if (meta) {
-            const parts = meta.trim().split(/\s+/);
-            if (parts.length === 2 && /^\d{1,2}\/\d{1,2}$/.test(parts[0]) && /^\d{1,2}:\d{2}$/.test(parts[1])) {
-                time = parseDateTime(`${parts[0]} ${parts[1]}`);
+            const parts = meta.trim().split(/\s+/); // ['8/23', '14:00', '台北']
+
+            // 判斷前兩項是否是合法的日期與時間格式
+            const datePart = parts[0];
+            const timePart = parts[1];
+            const isDate = /^\d{1,2}\/\d{1,2}$/.test(datePart);
+            const isTime = timePart && /^\d{1,2}:\d{2}$/.test(timePart);
+
+	    var specificTime = false;
+            if (isDate && isTime) {
+                time = parseDateTime(`${datePart} ${timePart}`);
+		specificTime = true;
+                location = parts.slice(2).join(' ') || undefined;
+            } else if (isDate) {
+                time = parseDateTime(`${datePart} 00:00`);
+                location = parts.slice(1).join(' ') || undefined;
             } else {
-                if (parts.length >= 1 && /^\d{1,2}\/\d{1,2}$/.test(parts[0])) {
-                    time = parseDateTime(`${parts[0]} 00:00`);
-                }
-                if (parts.length >= 2) {
-                    location = parts.slice(-1).join(' ');
-                }
+                location = parts.join(' ') || undefined;
             }
         }
 
@@ -79,6 +88,7 @@ export function parseCommand(input: string): ParsedCommand {
             type: action === '查詢' ? 'queryOne' : 'deleteOne',
             title,
             time,
+	    specificTime,
             location,
         };
     }

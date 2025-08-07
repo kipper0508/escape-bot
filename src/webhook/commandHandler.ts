@@ -115,12 +115,24 @@ export async function handleCommand(
             };
 
             if (command.time) {
-                whereClause.eventTime = command.time;
-                console.log(command.time);
+		if(command.specificTime) {	
+                    whereClause.eventTime = command.time;
+		} else {
+	            const day = new Date(command.time);
+                    const start = new Date(day.setHours(0, 0, 0, 0));
+                    const end = new Date(day.setHours(23, 59, 59, 999));
+		    whereClause.eventTime = {
+                        gte: start,
+                        lte: end,
+                    };
+		}
             }
+
             if (command.location) {
                 whereClause.location = command.location;
             }
+
+	    console.log(whereClause);
 
             const matchedEvents = await prisma.event.findMany({
                 where: whereClause,
