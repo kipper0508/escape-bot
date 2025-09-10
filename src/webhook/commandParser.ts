@@ -68,7 +68,7 @@ export function parseCommand(input: string): ParsedCommand {
             // 判斷前兩項是否是合法的日期與時間格式
             const datePart = parts[0];
             const timePart = parts[1];
-            const isDate = /^\d{1,2}\/\d{1,2}$/.test(datePart);
+            const isDate = /^(\d{4}\/)?\d{1,2}\/\d{1,2}$/.test(datePart);
             const isTime = timePart && /^\d{1,2}:\d{2}$/.test(timePart);
 
 	    var specificTime = false;
