@@ -176,12 +176,13 @@ export class EventService {
         }
     }
 
-    async getEventsNeedingReminder(): Promise<Event[]> {
-        const events = await this.eventRepository.findNeedingReminder();
-        const now = new Date();
+    async getEventsNeedingReminder(
+        nowTime: Date,
+    ): Promise<Event[]> {
+        const events = await this.eventRepository.findNeedingReminder(nowTime);
 
         return events.filter(event => {
-            const diffMinutes = (event.eventTime.getTime() - now.getTime()) / 1000 / 60;
+            const diffMinutes = (event.eventTime.getTime() - nowTime.getTime()) / 1000 / 60;
             return diffMinutes <= event.remindBefore && diffMinutes > 0;
         });
     }

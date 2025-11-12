@@ -30,7 +30,7 @@ function createReminder() {
 
 		logger.info(`Reminder check at ${nowTimeZone}`);
 
-		const events = await eventService.getEventsNeedingReminder();
+		const events = await eventService.getEventsNeedingReminder(nowTimeZone);
 
 		for (const event of events) {
 			await notificationService.sendEventReminder(event);
@@ -40,3 +40,4 @@ function createReminder() {
 }
 
 createReminder()
+

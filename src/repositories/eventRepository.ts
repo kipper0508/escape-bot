@@ -94,14 +94,14 @@ export class EventRepository {
         return events as Event[];
     }
 
-    async findNeedingReminder(): Promise<Event[]> {
-        const nowTimeZone = new Date(new Date().getTime() + CONSTANTS.TIME_ZONE * 60 * 60 * 1000);
-
+    async findNeedingReminder(
+        nowTime: Date,
+    ): Promise<Event[]> {
         const events = await this.prisma.event.findMany({
             where: {
                 reminded: false,
                 createByType: 'group' as any,
-                eventTime: { gt: nowTimeZone }
+                eventTime: { gt: nowTime }
             }
         });
 
