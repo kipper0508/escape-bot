@@ -5,7 +5,28 @@ import { CONSTANTS } from '../config/constants.js';
 import { logger } from '../utils/logger.js';
 
 export class GameService {
-    async searchGames(title: string, location: string): Promise<GameInfo[]> {
+    async searchGames(title: string): Promise<GameInfo[]> {
+        try {
+            const url = `${CONSTANTS.ESCAPE_BAR_BASE_URL}/games?outdoor=true&over=true&q=${encodeURIComponent(title)}`;
+            const response = await fetch(url, {
+                signal: AbortSignal.timeout(CONSTANTS.REQUEST_TIMEOUT_MS)
+            });
+
+            if (!response.ok) {
+                throw new Error('Fail to fetch data from EscapeBar');
+            }
+
+            const html = await response.text();
+            const games = this.parseGamesFromHtml(title, html);
+            games.sort((a, b) => a.title.localeCompare(b.title));
+
+            return games;
+        } catch (error) {
+            logger.error('Failed to search games', error as Error, { title, location });
+        }
+    }
+
+    async searchLocationGames(title: string, location: string): Promise<GameInfo[]> {
         try {
             const url = `${CONSTANTS.ESCAPE_BAR_BASE_URL}/games?outdoor=true&over=true&q=${encodeURIComponent(title)}`;
             const response = await fetch(url, {
@@ -23,7 +44,7 @@ export class GameService {
             return filteredGames;
 
         } catch (error) {
-            logger.error('Failed to search games', error as Error, { title, location });
+            logger.error('Failed to search games in this location', error as Error, { title, location });
         }
     }
 
@@ -166,3 +187,4 @@ export class GameService {
         return JSON.stringify(allResults, null, 2);
     }
 }
+

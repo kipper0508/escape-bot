@@ -6,6 +6,7 @@ import { GameService } from './gameService.js';
 import { logger } from '../utils/logger.js';
 import { format } from 'date-fns';
 import { COMMAND_GUIDE } from '../config/strings/zh-tw.js';
+import { CONSTANTS } from '../config/constants.js';
 
 export class CommandService {
     constructor(
@@ -20,7 +21,7 @@ export class CommandService {
         QUERY_HISTORY: /^小精靈\s+查詢歷史$/,
         QUERY_UPCOMING: /^小精靈\s+查詢\s+([^\(]+?)(?:\s+\((.*?)\))?$/,
         DELETE: /^小精靈\s+刪除\s+([^\(]+?)(?:\s+\((.*?)\))?$/,
-        SEARCH: /^小精靈\s+找主題\s+(.+?)\s+(\S+)$/,
+        SEARCH: /^小精靈\s+找主題\s+([^\(]+?)(?:\s+\((.*?)\))?$/,
         COMMENT: /^小精靈\s+看評論\s+(.+?)\s+(\S+)$/,
         HELP: /^小精靈\s+幫助$/,
     } as const;
@@ -45,7 +46,8 @@ export class CommandService {
         return null;
     }
 
-    private parseMetaInfo(meta: string): {
+    // parse date, hour and location
+    private parseDHL(meta: string): {
         eventTime?: Date;
         eventTimeHour?: boolean;
         location?: string;
@@ -68,6 +70,23 @@ export class CommandService {
             const time = this.parseDateTime(`${datePart} 00:00`);
             const location = parts.slice(1).join(' ') || undefined;
             return { eventTime: time || undefined, location, eventTimeHour: false };
+        }
+
+        return { location: parts.join(' ') || undefined };
+    }
+
+    // parse title, location and choice
+    private parseTLC(meta: string): {
+        location?: string;
+        choiceNum?: string;
+    } {
+        const parts = meta.trim().split(/\s+/);
+        const lastPart = parts[parts.length - 1];
+        const isChoiceNum = /^\d+$/.test(lastPart);
+        if (isChoiceNum) {
+            const choiceNum = lastPart;
+            const location = parts.slice(0, -1).join(' ') || undefined;
+            return { location, choiceNum };
         }
 
         return { location: parts.join(' ') || undefined };
@@ -109,7 +128,7 @@ export class CommandService {
                 const title = titleRaw.trim();
 
                 if (meta) {
-                    const { eventTime, eventTimeHour, location } = this.parseMetaInfo(meta);
+                    const { eventTime, eventTimeHour, location } = this.parseDHL(meta);
 
                     return {
                         type: 'query',
@@ -136,7 +155,7 @@ export class CommandService {
                 const title = titleRaw.trim();
 
                 if (meta) {
-                    const { eventTime, eventTimeHour, location } = this.parseMetaInfo(meta);
+                    const { eventTime, eventTimeHour, location } = this.parseDHL(meta);
                     return {
                         type: 'delete',
                         title,
@@ -154,11 +173,22 @@ export class CommandService {
 
             match = text.match(this.PATTERNS.SEARCH);
             if (match) {
-                const [, title, location] = match;
+                const [, titleRaw, meta] = match;
+                const title = titleRaw.trim();
+
+                if (meta) {
+                    const { location, choiceNum } = this.parseTLC(meta);
+                    return {
+                        type: 'search',
+                        title: title,
+                        location: location,
+                        choiceNum: choiceNum,
+                    };
+                }
+
                 return {
                     type: 'search',
                     title: title.trim(),
-                    location: location.trim(),
                 };
             }
 
@@ -289,24 +319,46 @@ export class CommandService {
     }
 
     private async handleSearchCommand(command: ParsedCommand): Promise<string> {
-        if (!command.title || !command.location) {
-            return '❌ 找主題需要名稱與地點\n\n範例：\n小精靈 找主題 偶像出道 台北';
+        if (!command.title) {
+            return '❌ 找主題需要名稱\n\n範例：\n小精靈 找主題 偶像出道';
         }
 
         try {
-            const games = await this.gameService.searchGames(command.title, command.location);
+            const games = await this.gameService.searchGames(command.title);
 
             if (games.length === 0) {
-                return `❌ 在「${command.location}」找不到「${command.title}」相關的密室主題`;
+                return `❌ 找不到「${command.title}」相關的密室主題`;
             }
 
+            let matchedGames = games;
             if (games.length > 1) {
-                const sortedGames = games.sort((a, b) => a.title.localeCompare(b.title));
-                const titles = sortedGames.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
-                return `⚠️ 在「${command.location}」有多個相關密室：\n\n${titles}\n\n請使用完整名稱搜尋`;
+                if (command.location && command.choiceNum) {
+                    matchedGames = games.filter((game, idx) =>
+                        game.cityId === CONSTANTS.CITY_TO_ID[command.location] && idx + 1 === Number(command.choiceNum)
+                    );
+                }
+                else if (command.location) {
+                    matchedGames = games.filter((game) =>
+                        game.cityId === CONSTANTS.CITY_TO_ID[command.location]
+                    );
+                }
+                else if (command.choiceNum) {
+                    matchedGames = games.filter((_, idx) =>
+                        idx + 1 === Number(command.choiceNum)
+                    );
+                }
+
+                if (matchedGames.length > 1) {
+                    const titles = games.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
+                    return `⚠️ 搜尋「${command.title}」找到多個相關密室：\n\n${titles}\n\n請使用附加條件搜尋\n小精靈 找主題 偶像出道 (台北 1)\n`;
+                }
             }
 
-            const game = games[0];
+            if (matchedGames.length === 0) {
+                return '❌ 找無條件相符的遊戲資訊';
+            }
+
+            const game = matchedGames[0];
             const scaredWaring = await this.gameService.isScaredTopic(game.gameId) ? '👻👻 恐怖警告 👻👻\n' : '';
             const description = await this.gameService.getGameDescription(game.title, game.gameId);
 
@@ -323,7 +375,7 @@ export class CommandService {
         }
 
         try {
-            const games = await this.gameService.searchGames(command.title, command.location);
+            const games = await this.gameService.searchLocationGames(command.title, command.location);
             if (games.length === 0) {
                 return '❌ 找不到密室主題';
             } else if (games.length > 1) {

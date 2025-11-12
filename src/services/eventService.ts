@@ -49,7 +49,7 @@ export class EventService {
                 return `❌ ${validation.errors.join(', ')}`;
             }
 
-            const games = await this.gameService.searchGames(title, location);
+            const games = await this.gameService.searchLocationGames(title, location);
             if (games.length === 0) {
                 return '❌ 找不到密室主題';
             }

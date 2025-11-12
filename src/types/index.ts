@@ -35,6 +35,7 @@ export interface ParsedCommand {
     eventTime?: Date;
     eventTimeHour?: boolean;
     location?: string;
+    choiceNum?: string;
 }
 
 export interface Review {
