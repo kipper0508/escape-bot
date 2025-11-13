@@ -66,7 +66,7 @@ export class GameService {
 
         } catch (error) {
             logger.error('Failed to get game description', error as Error, { title, gameId });
-            return '無法取得遊戲描述';
+            return '❌ 無法取得遊戲描述';
         }
     }
 
@@ -187,4 +187,5 @@ export class GameService {
         return JSON.stringify(allResults, null, 2);
     }
 }
+
 

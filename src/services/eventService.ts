@@ -51,6 +51,10 @@ export class EventService {
             const hasConflict = conflicts.some(event =>
                 Math.abs(event.eventTime.getTime() - eventTime.getTime()) < 60 * 60 * 1000
             );
+            
+            if (hasConflict) {
+                return '⚠️ 該時間已有活動';
+            }
 
             const games = await this.gameService.searchGames(title);
             if (games.length === 0) {
@@ -77,16 +81,12 @@ export class EventService {
 
                 if (matchedGames.length > 1) {
                     const titles = games.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
-                    return `⚠️ 搜尋「${title}」找到多個相關密室：\n\n${titles}\n\n請使用附加條件搜尋\n`;
+                    return `⚠️ 搜尋「${title}」找到多個相關密室：\n\n${titles}\n\n請使用附加條件搜尋\n小精靈 新增 6/20 16:00 偶像出道 (1)\n`;
                 }
             }
 
             if (matchedGames.length === 0) {
-                return '❌ 找無條件相符的遊戲資訊';
-            }
-
-            if (hasConflict) {
-                return '⚠️ 該時間已有活動';
+                return '❌ 找不到條件相符的密室主題';
             }
 
             const game = matchedGames[0];
@@ -142,12 +142,12 @@ export class EventService {
             );
 
             if (matchedEvents.length === 0) {
-                return '❌ 查無符合條件的活動';
+                return '❌ 找不到符合條件的活動';
             }
 
             if (matchedEvents.length > 1) {
                 const titles = matchedEvents.map((event, idx) => `${idx + 1}. ${event.title}`).join('\n');
-                return `⚠️ 查詢到多筆活動，請提供更完整的時間或地點資訊\n${titles}`;
+                return `⚠️ 查詢「${title}」找到多筆活動：\n\n${titles}\n\n請提供更完整的附加條件\n小精靈 查詢 偶像出道 (6/20)\n`;
             }
 
             const event = matchedEvents[0];
@@ -155,7 +155,7 @@ export class EventService {
             return `📌 活動資訊\n名稱：${event.title}\n時間：${format(event.eventTime, 'yyyy/M/d HH:mm')}\n${event.description || '（無說明）'}`;
         } catch (error) {
             logger.error('Failed to find event', error as Error);
-            return '❌ 查無符合條件的活動';
+            return '❌ 找不到符合條件的活動';
         }
     }
 
@@ -182,12 +182,12 @@ export class EventService {
             );
 
             if (matchedEvents.length === 0) {
-                return '❌ 查無符合條件的活動';
+                return '❌ 找不到符合條件的活動';
             }
 
             if (matchedEvents.length > 1) {
                 const titles = matchedEvents.map((event, idx) => `${idx + 1}. ${event.title}`).join('\n');
-                return `⚠️ 查詢到多筆活動，請提供更完整的時間或地點資訊\n${titles}`;
+                return `⚠️ 查詢「${title}」找到多筆活動：\n\n${titles}\n\n請提供更完整的附加條件\n小精靈 刪除 偶像出道 (6/20)\n`;
             }
 
             const event = matchedEvents[0];

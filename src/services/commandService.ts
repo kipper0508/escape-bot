@@ -284,7 +284,7 @@ export class CommandService {
         contextType: 'user' | 'group'
     ): Promise<string> {
         if (!command.title) {
-            return '❌ 請提供活動名稱\n\n範例：\n小精靈 查詢 偶像出道 (6/20 16:00 台北)';
+            return '❌ 請提供活動名稱\n\n範例：\n小精靈 查詢 偶像出道';
         }
 
         const result = await this.eventService.getEvent(
@@ -326,7 +326,7 @@ export class CommandService {
         contextType: 'user' | 'group'
     ): Promise<string> {
         if (!command.title) {
-            return '❌ 請提供活動名稱\n\n範例：\n小精靈 刪除 偶像出道 (6/20 16:00 台北)';
+            return '❌ 請提供活動名稱\n\n範例：\n小精靈 刪除 偶像出道';
         }
 
         const result = await this.eventService.deleteEvent(
@@ -373,12 +373,12 @@ export class CommandService {
 
                 if (matchedGames.length > 1) {
                     const titles = games.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
-                    return `⚠️ 搜尋「${command.title}」找到多個相關密室：\n\n${titles}\n\n請使用附加條件搜尋\n小精靈 找主題 偶像出道 (台北 1)\n`;
+                    return `⚠️ 搜尋「${command.title}」找到多個相關密室：\n\n${titles}\n\n請使用附加條件搜尋\n小精靈 找主題 偶像出道 (1)\n`;
                 }
             }
 
             if (matchedGames.length === 0) {
-                return '❌ 找無條件相符的遊戲資訊';
+                return '❌ 找無條件相符的密室主題';
             }
 
             const game = matchedGames[0];
@@ -388,7 +388,7 @@ export class CommandService {
             return `🧭 主題資訊\n${scaredWaring}名稱：${game.title}\n${description ?? '（無說明）'}`;
         } catch (error) {
             logger.error('Game search failed', error as Error);
-            return '❌ 搜尋遊戲資訊失敗，請稍後再試';
+            return '❌ 搜尋密室主題失敗，請稍後再試';
         }
     }
 
@@ -424,12 +424,12 @@ export class CommandService {
 
                 if (matchedGames.length > 1) {
                     const titles = games.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
-                    return `⚠️ 搜尋「${command.title}」找到多個相關密室：\n\n${titles}\n\n請使用附加條件搜尋\n小精靈 看評論 偶像出道 (台北 1)\n`;
+                    return `⚠️ 搜尋「${command.title}」找到多個相關密室：\n\n${titles}\n\n請使用附加條件搜尋\n小精靈 看評論 偶像出道 (1)\n`;
                 }
             }
 
             if (matchedGames.length === 0) {
-                return '❌ 找無條件相符的遊戲資訊';
+                return '❌ 找無條件相符的密室主題';
             }
 
             const game = matchedGames[0];
