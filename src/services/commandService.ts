@@ -16,13 +16,13 @@ export class CommandService {
     ) { }
 
     private readonly PATTERNS = {
-        ADD: /^小精靈\s+新增\s+(\d{1,4}\/\d{1,2}(?:\/\d{1,2})?)\s+(\d{1,2}:\d{2})\s+(.+?)\s+(.+)$/,
+        ADD: /^小精靈\s+新增\s+(\d{1,4}\/\d{1,2}(?:\/\d{1,2})?)\s+(\d{1,2}:\d{2})\s+([^\(]+?)(?:\s+\((.*?)\))?$/,
         QUERY_UPCOMINGS: /^小精靈\s+查詢所有$/,
         QUERY_HISTORY: /^小精靈\s+查詢歷史$/,
         QUERY_UPCOMING: /^小精靈\s+查詢\s+([^\(]+?)(?:\s+\((.*?)\))?$/,
         DELETE: /^小精靈\s+刪除\s+([^\(]+?)(?:\s+\((.*?)\))?$/,
         SEARCH: /^小精靈\s+找主題\s+([^\(]+?)(?:\s+\((.*?)\))?$/,
-        COMMENT: /^小精靈\s+看評論\s+(.+?)\s+(\S+)$/,
+        COMMENT: /^小精靈\s+看評論\s+([^\(]+?)(?:\s+\((.*?)\))?$/,
         HELP: /^小精靈\s+幫助$/,
     } as const;
 
@@ -102,19 +102,30 @@ export class CommandService {
 
             match = text.match(this.PATTERNS.ADD);
             if (match) {
-                const [, date, time, title, location] = match;
+                const [, date, time, titleRaw, meta] = match;
                 const eventTime = this.parseDateTime(`${date} ${time}`);
+                const title = titleRaw.trim();
 
                 if (!eventTime) {
                     logger.warn('Failed to parse datetime', { date, time });
                     return { type: 'none' };
                 }
 
+                if (meta) {
+                    const { location, choiceNum } = this.parseTLC(meta);
+                    return {
+                        type: 'add',
+                        title: title,
+                        eventTime: eventTime,
+                        location: location,
+                        choiceNum: choiceNum,
+                    };
+                }
+
                 return {
                     type: 'add',
                     title: title.trim(),
                     eventTime: eventTime,
-                    location: location.trim(),
                 };
             }
 
@@ -194,11 +205,22 @@ export class CommandService {
 
             match = text.match(this.PATTERNS.COMMENT);
             if (match) {
-                const [, title, location] = match;
+                const [, titleRaw, meta] = match;
+                const title = titleRaw.trim();
+
+                if (meta) {
+                    const { location, choiceNum } = this.parseTLC(meta);
+                    return {
+                        type: 'comment',
+                        title: title,
+                        location: location,
+                        choiceNum: choiceNum,
+                    };
+                }
+
                 return {
                     type: 'comment',
                     title: title.trim(),
-                    location: location.trim(),
                 };
             }
 
@@ -220,14 +242,15 @@ export class CommandService {
         contextId: string,
         contextType: 'user' | 'group'
     ): Promise<string> {
-        if (!command.title || !command.eventTime || !command.location) {
-            return '❌ 新增活動需要名稱、時間與地點\n\n範例：\n小精靈 新增 6/20 16:00 偶像出道 台北';
+        if (!command.title || !command.eventTime) {
+            return '❌ 新增活動需要名稱、時間\n\n範例：\n小精靈 新增 6/20 16:00 偶像出道';
         }
 
         const result = await this.eventService.createEvent(
             command.title,
             command.location,
             command.eventTime,
+            command.choiceNum,
             contextId,
             contextType
         );
@@ -370,21 +393,46 @@ export class CommandService {
     }
 
     private async handleCommentCommand(command: ParsedCommand): Promise<string> {
-        if (!command.title || !command.location) {
-            return '❌ 看評論需要名稱與地點\n\n範例：\n小精靈 看評論 偶像出道 台北';
+        if (!command.title) {
+            return '❌ 看評論需要遊戲名稱\n\n範例：\n小精靈 看評論 偶像出道';
         }
 
         try {
-            const games = await this.gameService.searchLocationGames(command.title, command.location);
+            const games = await this.gameService.searchGames(command.title);
+
             if (games.length === 0) {
-                return '❌ 找不到密室主題';
-            } else if (games.length > 1) {
-                const sortedGames = games.sort((a, b) => a.title.localeCompare(b.title));
-                const titles = sortedGames.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
-                return `⚠️ 有多個同名密室在「${command.location}」，請確認要查詢的主題並重新查詢:。\n${titles}`;
+                return '❌ 找不到「${command.title}」相關的密室主題';
+            } 
+            
+            let matchedGames = games;
+            if (games.length > 1) {
+                if (command.location && command.choiceNum) {
+                    matchedGames = games.filter((game, idx) =>
+                        game.cityId === CONSTANTS.CITY_TO_ID[command.location] && idx + 1 === Number(command.choiceNum)
+                    );
+                }
+                else if (command.location) {
+                    matchedGames = games.filter((game) =>
+                        game.cityId === CONSTANTS.CITY_TO_ID[command.location]
+                    );
+                }
+                else if (command.choiceNum) {
+                    matchedGames = games.filter((_, idx) =>
+                        idx + 1 === Number(command.choiceNum)
+                    );
+                }
+
+                if (matchedGames.length > 1) {
+                    const titles = games.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
+                    return `⚠️ 搜尋「${command.title}」找到多個相關密室：\n\n${titles}\n\n請使用附加條件搜尋\n小精靈 看評論 偶像出道 (台北 1)\n`;
+                }
             }
 
-            const game = games[0];
+            if (matchedGames.length === 0) {
+                return '❌ 找無條件相符的遊戲資訊';
+            }
+
+            const game = matchedGames[0];
             const tags = await this.gameService.getTopicTags(game.gameId);
             const comment = await this.aiService.generateCustomerComment(game.gameId);
 
@@ -427,3 +475,4 @@ export class CommandService {
         }
     }
 }
+

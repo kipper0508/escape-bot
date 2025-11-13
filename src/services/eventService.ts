@@ -3,6 +3,7 @@ import { GameService } from './gameService.js';
 import { Event, CreateEventData } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 import { format } from 'date-fns';
+import { CONSTANTS } from '../config/constants.js';
 
 export class EventService {
     constructor(
@@ -18,10 +19,6 @@ export class EventService {
 
         if (!data.title?.trim()) {
             errors.push('活動名稱不能為空');
-        }
-
-        if (!data.location?.trim()) {
-            errors.push('地點不能為空');
         }
 
         if (!data.eventTime || !(data.eventTime instanceof Date)) {
@@ -40,6 +37,7 @@ export class EventService {
         title: string,
         location: string,
         eventTime: Date,
+        choiceNum: string,
         createdById: string,
         createByType: 'user' | 'group'
     ): Promise<string> {
@@ -49,31 +47,60 @@ export class EventService {
                 return `❌ ${validation.errors.join(', ')}`;
             }
 
-            const games = await this.gameService.searchLocationGames(title, location);
-            if (games.length === 0) {
-                return '❌ 找不到密室主題';
-            }
-
-            if (games.length > 1) {
-                const gameList = games.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
-                return `⚠️ 有多個同名密室在「${location}」:\n${gameList}`;
-            }
-
             const conflicts = await this.eventRepository.findByCreator(createdById, createByType);
             const hasConflict = conflicts.some(event =>
                 Math.abs(event.eventTime.getTime() - eventTime.getTime()) < 60 * 60 * 1000
             );
 
+            const games = await this.gameService.searchGames(title);
+            if (games.length === 0) {
+                return '❌ 找不到「${title}」相關的密室主題';
+            }
+
+            let matchedGames = games;
+            if (games.length > 1) {
+                if (location && choiceNum) {
+                    matchedGames = games.filter((game, idx) =>
+                        game.cityId === CONSTANTS.CITY_TO_ID[location] && idx + 1 === Number(choiceNum)
+                    );
+                }
+                else if (location) {
+                    matchedGames = games.filter((game) =>
+                        game.cityId === CONSTANTS.CITY_TO_ID[location]
+                    );
+                }
+                else if (choiceNum) {
+                    matchedGames = games.filter((_, idx) =>
+                        idx + 1 === Number(choiceNum)
+                    );
+                }
+
+                if (matchedGames.length > 1) {
+                    const titles = games.map((g, idx) => `${idx + 1}. ${g.title}`).join('\n');
+                    return `⚠️ 搜尋「${title}」找到多個相關密室：\n\n${titles}\n\n請使用附加條件搜尋\n`;
+                }
+            }
+
+            if (matchedGames.length === 0) {
+                return '❌ 找無條件相符的遊戲資訊';
+            }
+
             if (hasConflict) {
                 return '⚠️ 該時間已有活動';
             }
 
-            const game = games[0];
+            const game = matchedGames[0];
             const description = await this.gameService.getGameDescription(game.title, game.gameId);
+            
+            const cityName = game.cityId === '500'
+                ? '外島'
+                : Object.entries(CONSTANTS.CITY_TO_ID).find(
+                    ([, id]) => id === game.cityId
+                )?.[0] ?? '未知';
 
             const eventData: CreateEventData = {
                 title: game.title,
-                location,
+                location: cityName,
                 eventTime,
                 createdById,
                 createByType,
@@ -191,3 +218,4 @@ export class EventService {
         await this.eventRepository.markAsReminded(eventId);
     }
 }
+
